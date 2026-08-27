@@ -48,7 +48,7 @@ each case in plain words, and asks before it writes anything.
 
 ## The main tool · ابزار اصلی
 
-### `babuk_recover.py`
+### `tools/babuk_recover.py`
 
 An interactive wizard. Eight steps, nothing written without your confirmation.
 
