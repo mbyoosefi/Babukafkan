@@ -1,36 +1,27 @@
 # Babuk ESXi Recovery Toolkit
 
-Recover VMware virtual disks encrypted by **Babuk / Babyk** ESXi ransomware —
-without paying, without the attacker's key.
+<div dir="rtl">
 
-بازیابی دیسک‌های مجازی VMware که با باج‌افزار **Babuk / Babyk** روی ESXi رمز
-شده‌اند — بدون پرداخت باج و بدون کلید مهاجم.
+ابزارهای بازیابی دیسک‌های مجازی VMware که با باج‌افزار **Babuk / Babyk** روی ESXi آسیب دیده‌اند؛ بدون پرداخت باج و بدون کلید مهاجم.
 
----
+</div>
 
-## Why this works · چرا این کار می‌کند
-
-**EN.** Babuk's ESXi variant does not encrypt whole files. It runs a loop that
-writes 52 blocks of 10 MiB and then stops, so exactly **545,259,520 bytes
-(520 MiB)** at the head of every targeted file is destroyed. It then appends a
-32-byte trailer. On a 1 TB virtual disk that is **99.95 % of the data left
-untouched** — the file system itself is fine, only its head is gone.
-
-Everything in this toolkit is about rebuilding that head from copies the
-file system kept elsewhere on the disk.
-
-**FA.** نسخه ESXi باج‌افزار Babuk کل فایل را رمز نمی‌کند. حلقه‌ای دارد که ۵۲ بلوک
-۱۰ مگابایتی می‌نویسد و متوقف می‌شود، پس دقیقاً **۵۴۵٬۲۵۹٬۵۲۰ بایت (۵۲۰ مگابایت)**
-از ابتدای هر فایل نابود می‌شود، و ۳۲ بایت trailer به انتها اضافه می‌کند. روی یک
-دیسک ۱ ترابایتی یعنی **۹۹٫۹۵٪ داده دست‌نخورده** — فایل‌سیستم سالم است، فقط سرش
-رفته.
-
-کل این جعبه‌ابزار درباره بازسازی همان سر، از روی نسخه‌هایی است که خود فایل‌سیستم
-جای دیگری روی دیسک نگه داشته.
+> [!WARNING]
+> This toolkit is intended for incident recovery. Work on a copy or snapshot whenever possible, and review every proposed change before approving it.
 
 ---
 
-## Quick start · شروع سریع
+## چرا این روش کار می‌کند؟
+
+<div dir="rtl">
+
+نسخهٔ ESXi باج‌افزار Babuk همهٔ فایل را رمز نمی‌کند. این نمونه ۵۲ بلوک ۱۰ مگابایتی را از ابتدای فایل بازنویسی می‌کند و سپس متوقف می‌شود. در نتیجه دقیقاً **۵۴۵٬۲۵۹٬۵۲۰ بایت (۵۲۰ MiB)** از ابتدای هر فایل هدف از بین می‌رود و یک trailer ۳۲ بایتی نیز به انتهای آن افزوده می‌شود.
+
+در یک دیسک مجازی ۱ ترابایتی، بیش از ۹۹٫۹۵٪ داده‌ها دست‌نخورده باقی می‌مانند. فایل‌سیستم معمولاً هنوز روی دیسک وجود دارد؛ فقط اطلاعات ابتدای آن، از جمله جدول پارتیشن یا boot sector، آسیب دیده است. این ابزارها با تکیه بر نسخه‌های پشتیبانِ همان ساختارها که در بخش‌های دیگر دیسک باقی مانده‌اند، آن قسمت را بازسازی می‌کنند.
+
+</div>
+
+## شروع سریع
 
 ```bash
 scp tools/babuk_recover.py root@<esxi-host>:/tmp/
@@ -38,174 +29,134 @@ ssh root@<esxi-host>
 python3 /tmp/babuk_recover.py
 ```
 
-That is the whole thing. It finds every datastore, scans every disk, explains
-each case in plain words, and asks before it writes anything.
+<div dir="rtl">
 
-همین. همه دیتااستورها را پیدا می‌کند، هر دیسک را اسکن می‌کند، هر مورد را ساده
-توضیح می‌دهد، و قبل از هر نوشتنی تأیید می‌گیرد.
+همین کافی است. ابزار datastoreها و دیسک‌ها را پیدا می‌کند، هر مورد را بررسی و نتیجه را به زبان ساده گزارش می‌دهد. تا زمانی که برای همان ماشین `y` وارد نکنید، هیچ تغییری روی دیسک نوشته نمی‌شود.
 
----
+</div>
 
-## The main tool · ابزار اصلی
+## ابزار اصلی: `babuk_recover.py`
 
-### `tools/babuk_recover.py`
+<div dir="rtl">
 
-An interactive wizard. Eight steps, nothing written without your confirmation.
+یک ویزارد تعاملی برای بررسی و تعمیر دیسک‌های آسیب‌دیده. فرایند در هشت مرحله انجام می‌شود و هر نوشتن نیازمند تأیید شماست.
 
-یک ویزارد تعاملی. هشت مرحله، هیچ نوشتنی بدون تأیید شما.
+</div>
 
-| Step | EN | FA |
-|---|---|---|
-| 0 | Environment check — ESXi version, available Python interpreters, feature probe | بررسی محیط — نسخه ESXi، مفسرهای پایتون، تست قابلیت‌ها |
-| 1 | Find datastores and disks, grouped by VM | یافتن دیتااستورها و دیسک‌ها، گروه‌بندی بر اساس ماشین |
-| 2 | Detect earlier repair attempts and offer exact rollback | تشخیص تلاش‌های قبلی و امکان بازگردانی دقیق |
-| 3 | Deep scan — damage boundary, partition tables, real `$MFT` read | اسکن عمیق — مرز خرابی، جدول پارتیشن، خواندن واقعی `$MFT` |
-| 4 | Overview table of every disk | جدول کلی وضعیت همه دیسک‌ها |
-| 5 | Machine by machine, `y` / `n` / `a` / `q` | ماشین به ماشین، `y` / `n` / `a` / `q` |
-| 6 | Repair — trailer, boot sector, partition table, descriptor | تعمیر — trailer، boot sector، جدول پارتیشن، descriptor |
-| 7 | Verify immediately, then print next steps | تأیید فوری و دستورالعمل بعدی |
+| مرحله | شرح |
+|---:|---|
+| ۰ | بررسی محیط: نسخهٔ ESXi، مفسرهای Python و قابلیت‌های لازم |
+| ۱ | یافتن datastoreها و دیسک‌ها و گروه‌بندی بر اساس VM |
+| ۲ | تشخیص تلاش‌های تعمیر قبلی و امکان بازگردانی دقیق |
+| ۳ | اسکن عمیق: مرز خرابی، جدول پارتیشن و اعتبارسنجی واقعی `$MFT` |
+| ۴ | نمایش خلاصهٔ وضعیت همهٔ دیسک‌ها |
+| ۵ | انتخاب ماشین‌ها به‌صورت تعاملی با `y` / `n` / `a` / `q` |
+| ۶ | تعمیر trailer، boot sector، جدول پارتیشن و descriptor |
+| ۷ | اعتبارسنجی فوری و نمایش گام‌های بعدی |
 
-**Options**
+### گزینه‌ها
 
-```
---root PATH     where to look                (default /vmfs/volumes)
---log PATH      log file                     (default /tmp/babuk_recover.log)
---tail MB       tail scan window             (default 2048)
---skip-env      skip the environment check
+```text
+--root PATH     مسیر جست‌وجو                 (پیش‌فرض: /vmfs/volumes)
+--log PATH      فایل گزارش                   (پیش‌فرض: /tmp/babuk_recover.log)
+--tail MB       پنجرهٔ اسکن انتهای دیسک      (پیش‌فرض: 2048)
+--skip-env      رد کردن بررسی محیط
 ```
 
-**Verdicts · نتایج**
+### نتیجه‌های گزارش‌شده
 
-| Verdict | EN | FA |
-|---|---|---|
-| `READY` | Already usable | از قبل قابل استفاده |
-| `REPAIRABLE` | Can be fixed automatically | قابل تعمیر خودکار |
-| `NEEDS MANUAL WORK` | `$MFT` gone or non-NTFS — use a carving tool | `$MFT` نابود یا غیر NTFS — ابزار carving لازم است |
-| `TOTAL LOSS` | Whole file fits inside the 520 MiB | کل فایل داخل ۵۲۰ مگابایت بوده |
-| `IN USE` | A running VM holds the disk — power it off | یک VM روشن دیسک را گرفته — خاموشش کن |
+| نتیجه | معنی |
+|---|---|
+| `READY` | دیسک پیش‌تر قابل استفاده است. |
+| `REPAIRABLE` | امکان تعمیر خودکار وجود دارد. |
+| `NEEDS MANUAL WORK` | `$MFT` از بین رفته یا فایل‌سیستم NTFS نیست؛ به ابزار carving نیاز است. |
+| `TOTAL LOSS` | کل فایل در محدودهٔ تخریب‌شدهٔ ۵۲۰ MiB قرار داشته است. |
+| `IN USE` | دیسک به VM روشن متصل است؛ ابتدا VM را خاموش کنید. |
 
----
+## ابزارهای مکمل
 
-## Supporting tools · ابزارهای کمکی
+| ابزار | کاربرد |
+|---|---|
+| [`deep_probe.py`](tools/deep_probe.py) | پروفایل forensics فقط‌خواندنی: نقشهٔ entropy، جدول پارتیشن و اعتبارسنجی هر volume NTFS از طریق خواندن `$MFT` |
+| [`rebuild_mbr.py`](tools/rebuild_mbr.py) | بازسازی MBR تخریب‌شده از NTFS boot sectorهای باقی‌مانده |
+| [`gpt_info.py`](tools/gpt_info.py) | خواندن جدول پارتیشن GPT از نسخهٔ پشتیبان در انتهای دیسک |
+| [`babuk_mft.py`](tools/babuk_mft.py) | خواندن مستقیم `$MFT`، فهرست و استخراج فایل‌ها بدون mount کردن دیسک؛ نیازمند Python 3.6+ |
+| [`refs_veeam.py`](tools/refs_veeam.py) | بررسی volumeهای ReFS و مخازن Veeam، یافتن نام فایل‌ها و بازیابی boot record |
 
-| Tool | EN | FA |
-|---|---|---|
-| `deep_probe.py` | Read-only forensic profile: entropy map, partition tables, every NTFS volume verified by reading `$MFT` | پروفایل کاملاً read-only: نقشه آنتروپی، جدول پارتیشن، تأیید هر ولوم NTFS با خواندن `$MFT` |
-| `rebuild_mbr.py` | Rebuild a destroyed MBR from surviving NTFS boot sectors | بازسازی MBR نابودشده از boot sector های بازمانده |
-| `gpt_info.py` | Print the GPT partition table from the backup copy at the end of the disk | چاپ جدول پارتیشن GPT از نسخه پشتیبان انتهای دیسک |
-| `babuk_mft.py` | Read `$MFT` directly, list files, extract them without mounting (needs Python 3.6+) | خواندن مستقیم `$MFT`، فهرست و استخراج فایل بدون mount (نیازمند پایتون ۳٫۶+) |
-| `refs_veeam.py` | For **ReFS** volumes (Veeam repositories): find backup filenames, ReFS structures, restore the boot record | برای ولوم‌های **ReFS** (مخازن Veeam): یافتن نام بکاپ‌ها، ساختارهای ReFS، بازگردانی boot record |
+## نکته‌های مهم در بازیابی
 
----
+### مرز تخریب ۵۲۰ MiB است، نه ۵۱۲ MiB
 
-## What this toolkit learned the hard way · درس‌هایی که به سختی به دست آمد
+<div dir="rtl">
 
-These are real bugs found and fixed during an actual multi-host recovery.
-Each one silently produced wrong results before it was caught.
+رمزکننده از حلقهٔ `do/while` با بلوک‌های ۱۰ مگابایتی استفاده می‌کند و ۵۲ بلوک می‌نویسد. فرض کردن ۵۱۲ MiB باعث می‌شود ۸ MiB دادهٔ تخریب‌شده به اشتباه سالم فرض شود.
 
-این‌ها باگ‌های واقعی هستند که در جریان یک بازیابی چندهاستی واقعی پیدا و رفع
-شدند. هرکدام قبل از کشف، بی‌سروصدا نتیجه غلط می‌داد.
+</div>
 
-### 1. The boundary is 520 MiB, not 512 · مرز ۵۲۰ مگابایت است نه ۵۱۲
+### ممکن است دیسک بیش از یک‌بار رمز شده باشد
 
-The encryptor uses a `do/while` loop with a 10 MiB block, so it writes 52
-blocks before the counter passes 512 MiB. Assuming 512 leaves 8 MiB of
-destroyed data treated as good.
+<div dir="rtl">
 
-انکریپتور حلقه `do/while` با بلوک ۱۰ مگابایتی دارد، پس ۵۲ بلوک می‌نویسد تا شمارنده
-از ۵۱۲ مگابایت رد شود. فرض ۵۱۲، هشت مگابایت داده نابود را سالم فرض می‌کند.
+هر اجرا trailer ۳۲ بایتی خود را اضافه می‌کند. برای نمونه‌ای که دوبار هدف قرار گرفته، trailer برابر ۶۴ بایت است. حذف ثابت ۳۲ بایت، اندازهٔ دیسک را ناتراز می‌کند؛ ابزار تا نزدیک‌ترین sector کامل trim می‌کند.
 
-### 2. Some disks were encrypted more than once · بعضی دیسک‌ها چند بار رمز شدند
+</div>
 
-Each run appends its own 32-byte trailer. Disks hit twice carry **64 bytes**.
-Trimming a fixed 32 leaves the file misaligned and Windows reports the wrong
-disk size. The tool trims back to the nearest whole sector instead.
+### یک boot sector معتبر به‌تنهایی کافی نیست
 
-هر اجرا trailer ۳۲ بایتی خودش را اضافه می‌کند. دیسک‌هایی که دو بار خورده‌اند
-**۶۴ بایت** دارند. بریدن ثابتِ ۳۲ بایت فایل را ناهم‌تراز می‌گذارد و ویندوز اندازه
-غلط می‌بیند. ابزار به‌جایش تا نزدیک‌ترین سکتور کامل برش می‌زند.
+<div dir="rtl">
 
-### 3. A valid boot sector proves nothing · boot sector سالم هیچ چیزی را ثابت نمی‌کند
+ممکن است boot sector متعلق به پارتیشن Recovery با نسخهٔ پشتیبان boot sector اشتباه گرفته شود. پیش از هر نوشتن، ابزار `$MFT` را واقعاً می‌خواند و رکوردهای `FILE` را بررسی می‌کند؛ اگر دست‌کم ۴ رکورد از ۸ رکورد نخست معتبر نباشد، نوشتن رد می‌شود.
 
-**This one was dangerous.** An early version found a Recovery partition's boot
-sector, mistook it for a backup copy, and wrote a boot sector *into the middle
-of the C: drive's data*. Now `$MFT` is actually read and checked for `FILE`
-records before any write, and the write is refused if fewer than 4 of the first
-8 records are valid.
+</div>
 
-**این یکی خطرناک بود.** نسخه اولیه boot sector یک پارتیشن Recovery را پیدا کرد،
-آن را نسخه پشتیبان فرض کرد، و boot sector را *وسط داده‌های درایو C:* نوشت. حالا
-قبل از هر نوشتنی `$MFT` واقعاً خوانده و رکوردهای `FILE` بررسی می‌شود، و اگر کمتر
-از ۴ رکورد از ۸ رکورد اول معتبر باشد نوشتن رد می‌شود.
+### boot sector قدیمی و بزرگ‌تر می‌تواند گمراه‌کننده باشد
 
-### 4. Stale oversized backup copies · نسخه‌های پشتیبان کهنه و بزرگ‌تر
+<div dir="rtl">
 
-Disks that were resized carry an **older, larger** NTFS backup boot sector from
-the previous layout. Trusting it silently swallows the partition that follows —
-in one case it hid the entire Recovery partition. When two candidates share a
-start offset, the **smaller** one wins.
+دیسک‌هایی که پیش‌تر resize شده‌اند ممکن است نسخهٔ پشتیبان NTFS مربوط به چیدمان قدیمی و بزرگ‌تر داشته باشند. وقتی دو نامزد offset آغاز یکسانی دارند، گزینهٔ کوچک‌تر معتبرتر است؛ در غیر این صورت پارتیشن بعدی ممکن است پنهان شود.
 
-دیسک‌هایی که resize شده‌اند یک boot sector پشتیبان **قدیمی‌تر و بزرگ‌تر** از چیدمان
-قبلی دارند. اعتماد به آن، پارتیشن بعدی را بی‌صدا می‌بلعد — در یک مورد کل پارتیشن
-Recovery را پنهان کرد. وقتی دو کاندید یک آفست شروع دارند، **کوچک‌تر** برنده است.
+</div>
 
-### 5. Repairing the boot sector is not enough · تعمیر boot sector کافی نیست
+### تعمیر boot sector به‌تنهایی کافی نیست
 
-Sector 0 of the disk — the partition table — also died. Without it Windows
-shows the whole disk as **unallocated** even when every byte of the file system
-is intact. This was the single most common reason a "successful" repair still
-looked like a failure.
+<div dir="rtl">
 
-سکتور صفر دیسک — جدول پارتیشن — هم مرده است. بدون آن، ویندوز کل دیسک را
-**Unallocated** نشان می‌دهد حتی وقتی تمام بایت‌های فایل‌سیستم سالم است. این
-شایع‌ترین دلیلی بود که یک تعمیر «موفق» باز هم شکست‌خورده به نظر می‌رسید.
+sector صفر دیسک و جدول پارتیشن نیز در ناحیهٔ تخریب‌شده قرار دارند. بدون بازسازی آن، Windows ممکن است کل دیسک را `Unallocated` نشان دهد، حتی اگر داده‌های فایل‌سیستم سالم باشند.
 
-### 6. EFI / MSR / Recovery partitions have no NTFS backup · طبیعی است
+</div>
 
-That is normal and must not block the rest of the disk. An early version marked
-whole disks unrecoverable because the 100 MB EFI partition had no NTFS backup
-sector.
+### پارتیشن‌های EFI / MSR / Recovery معمولاً نسخهٔ پشتیبان NTFS ندارند
 
-این طبیعی است و نباید بقیه دیسک را متوقف کند. نسخه اولیه، دیسک‌های کامل را
-غیرقابل‌بازیابی علامت می‌زد چون پارتیشن ۱۰۰ مگابایتی EFI نسخه پشتیبان NTFS نداشت.
+<div dir="rtl">
 
-### 7. Absence of input is not consent · نبود ورودی یعنی رضایت نیست
+این موضوع طبیعی است و نباید مانع بازیابی دیگر پارتیشن‌های دیسک شود.
 
-Piping from a file or losing the terminal used to fall through to the default
-answer and write to disk. EOF now always means quit.
+</div>
 
-pipe کردن از فایل یا قطع شدن ترمینال، قبلاً به جواب پیش‌فرض می‌افتاد و روی دیسک
-می‌نوشت. حالا EOF همیشه یعنی خروج.
+### نبود ورودی به معنی تأیید نیست
 
----
+<div dir="rtl">
 
-## Safety · ایمنی
+اگر ورودی از فایل pipe شده باشد یا ترمینال قطع شود، EOF همیشه به معنی خروج است؛ هرگز به‌عنوان پاسخ پیش‌فرض برای نوشتن در نظر گرفته نمی‌شود.
 
-**EN**
+</div>
 
-- Nothing is written until you type `y` for that specific machine
-- Every byte replaced is saved to a `.bak` file **first**
-- A `.babuk-manifest` records offset, length and backup name, so any change can
-  be rolled back exactly — step 2 does this for you
-- Disks attached to a running VM are skipped with a clear message
-- Running the tool twice is safe; repaired disks report as already usable
-- `deep_probe.py`, `gpt_info.py` and `refs_veeam.py` (except `--apply`) never
-  write at all
+## ملاحظات ایمنی
 
-**FA**
+<div dir="rtl">
 
-- تا برای همان ماشین `y` تایپ نکنی چیزی نوشته نمی‌شود
-- هر بایتی که جایگزین شود **اول** در فایل `.bak` ذخیره می‌شود
-- فایل `.babuk-manifest` آفست، طول و نام بکاپ را ثبت می‌کند تا هر تغییری دقیقاً
-  برگردد — مرحله ۲ همین کار را می‌کند
-- دیسک‌های وصل به VM روشن با پیام روشن رد می‌شوند
-- اجرای دوباره امن است؛ دیسک‌های تعمیرشده «از قبل قابل استفاده» گزارش می‌شوند
-- `deep_probe.py`، `gpt_info.py` و `refs_veeam.py` (به‌جز `--apply`) اصلاً
-  نمی‌نویسند
+- تا زمانی که برای همان ماشین `y` وارد نکنید، هیچ داده‌ای نوشته نمی‌شود.
+- پیش از جایگزینی هر بایت، نسخهٔ اصلی در فایل `.bak` ذخیره می‌شود.
+- فایل `.babuk-manifest` شامل offset، طول و نام backup است تا هر تغییر دقیقاً قابل rollback باشد.
+- دیسک متصل به VM روشن با پیامی واضح رد می‌شود.
+- اجرای دوبارهٔ ابزار ایمن است؛ دیسک تعمیرشده به‌عنوان قابل استفاده گزارش می‌شود.
+- `deep_probe.py`، `gpt_info.py` و `refs_veeam.py` ــ به‌جز حالت `--apply` ــ فقط‌خواندنی هستند.
 
----
+</div>
 
-## After the repair · بعد از تعمیر
+## بعد از تعمیر
+
+### ثبت و روشن‌کردن VM در ESXi
 
 ```bash
 vim-cmd solo/registervm "/vmfs/volumes/<ds>/<VM>/<VM>.vmx"
@@ -213,123 +164,109 @@ vim-cmd vmsvc/getallvms
 vim-cmd vmsvc/power.on <VMID>
 ```
 
-**Volume shows as RAW in Windows** — expected. From a Windows PE prompt:
+### اگر volume در Windows به‌صورت RAW دیده می‌شود
+
+<div dir="rtl">
+
+این وضعیت پس از تعمیر طبیعی است. در Windows PE اجرا کنید:
+
+</div>
 
 ```cmd
 chkdsk C: /f
 ```
 
-**Machine will not boot at all** — its System Reserved partition was inside the
-destroyed region, so the boot files are gone. The data is still fine. Either
-attach the disk as a *second* disk to a working Windows VM and copy the data
-off, or rebuild the boot files:
+### اگر ماشین boot نمی‌شود
+
+<div dir="rtl">
+
+ممکن است پارتیشن System Reserved در ناحیهٔ تخریب‌شده بوده باشد. داده‌ها همچنان می‌توانند سالم باشند: دیسک را به‌عنوان دیسک دوم به یک Windows VM سالم متصل و داده‌ها را کپی کنید، یا فایل‌های boot را بازسازی کنید.
+
+</div>
 
 ```cmd
 diskpart
 list volume
-select volume <the large NTFS one>
+select volume <the-large-NTFS-volume>
 assign letter=W
 exit
 bcdboot W:\Windows /s W: /f BIOS
 ```
 
-Use `/f UEFI` on a GPT disk. `bootrec /fixboot` often returns *access denied*
-in Windows PE — that is normal and does not matter once `bcdboot` succeeded.
+<div dir="rtl">
 
-**ولوم در ویندوز RAW است** — طبیعی است، `chkdsk` درستش می‌کند.
-**ماشین اصلاً بوت نمی‌شود** — پارتیشن System Reserved داخل ناحیه نابودشده بوده.
-داده سالم است؛ یا دیسک را به‌عنوان دیسک *دوم* به یک ویندوز سالم وصل کن، یا با
-`bcdboot` بوت را بازسازی کن.
+برای دیسک GPT از `/f UEFI` استفاده کنید. خطای `access denied` برای `bootrec /fixboot` در Windows PE رایج است و اگر `bcdboot` با موفقیت اجرا شده باشد، اهمیت ندارد.
 
----
+</div>
 
-## ReFS and Veeam repositories · ReFS و مخازن Veeam
+## ReFS و مخازن Veeam
 
-Veeam repositories are usually **ReFS**, which this wizard cannot repair —
-`.vbk` files have no fixed magic bytes, so ordinary carving finds nothing.
-`refs_veeam.py` takes a different route: ReFS stores filenames as UTF-16 in
-metadata pages deep in the volume, far past the damaged head.
+<div dir="rtl">
 
-مخازن Veeam معمولاً **ReFS** هستند که این ویزارد تعمیرشان نمی‌کند — فایل‌های
-`.vbk` امضای ثابت ندارند، پس carving معمولی چیزی پیدا نمی‌کند. ابزار
-`refs_veeam.py` راه دیگری می‌رود: ReFS نام فایل‌ها را به‌صورت UTF-16 در صفحات
-متادیتای عمق ولوم نگه می‌دارد، خیلی دورتر از سر نابودشده.
+مخازن Veeam معمولاً از ReFS استفاده می‌کنند و ویزارد اصلی آن‌ها را تعمیر نمی‌کند. فایل‌های `.vbk` امضای ثابت ندارند، بنابراین carving معمولی معمولاً کمکی نمی‌کند. ابزار `refs_veeam.py` نام فایل‌ها را از صفحات metadata با کدگذاری UTF-16، در بخش‌های دور از ابتدای تخریب‌شدهٔ volume، پیدا می‌کند.
+
+</div>
 
 ```bash
-# list every Veeam backup filename on the disk
+# فهرست نام همهٔ backupهای Veeam روی دیسک
 python3 tools/refs_veeam.py names <disk> --out /tmp/names.txt
 
-# find ReFS structures (boot record, superblock copies)
+# یافتن ساختارهای ReFS مانند boot record و نسخه‌های superblock
 python3 tools/refs_veeam.py refs <disk> --start <near-the-end>
 
-# inspect one hit
+# بررسی یک نتیجه
 python3 tools/refs_veeam.py around <disk> <offset>
 
-# put a surviving boot record back (dry run without --apply)
+# بازگرداندن boot record باقی‌مانده؛ بدون --apply فقط dry run است
 python3 tools/refs_veeam.py restore <disk> <offset> \
-        --to <partition-start> --part-size <from gpt_info.py> --apply
+  --to <partition-start> --part-size <from-gpt_info.py> --apply
 ```
 
-**Known limit · محدودیت شناخته‌شده.** Restoring the ReFS boot record makes
-Windows recognise the volume, but ReFS also needs the metadata trees the
-checkpoint points to. If those clusters fell inside the destroyed 520 MiB, the
-volume still will not mount and Windows reports *"the file system structure
-cannot be corrected"*. In that case the filenames recovered by `names` tell you
-exactly what existed, and a commercial ReFS-aware tool (UFS Explorer) is the
-next step.
+<div dir="rtl">
 
-بازگرداندن boot record باعث می‌شود ویندوز ولوم را بشناسد، اما ReFS به درخت‌های
-متادیتایی که checkpoint به آن‌ها اشاره می‌کند هم نیاز دارد. اگر آن cluster ها
-داخل ۵۲۰ مگابایت نابودشده افتاده باشند، ولوم باز هم mount نمی‌شود. در آن حالت،
-نام فایل‌هایی که `names` پیدا کرده دقیقاً می‌گوید چه چیزی وجود داشته، و قدم بعدی
-یک ابزار تجاری ReFS-آگاه است.
+بازگرداندن boot record ممکن است باعث شود Windows volume را شناسایی کند؛ اما ReFS به درخت‌های metadata مورد اشارهٔ checkpoint نیز نیاز دارد. اگر آن clusterها در ۵۲۰ MiB ابتدایی آسیب دیده باشند، volume mount نمی‌شود. در این حالت، فهرست نام‌های استخراج‌شده با `names` مشخص می‌کند چه چیزهایی وجود داشته‌اند و ابزار حرفه‌ایِ آگاه از ReFS مانند UFS Explorer گام بعدی است.
 
----
+</div>
 
-## Requirements · پیش‌نیازها
+## پیش‌نیازها
 
-- ESXi host shell access (`root`)
-- Python 3.5+ for every tool except `babuk_mft.py`, which needs 3.6+
-- Standard library only — nothing to install
-- ESXi 6.x, 7.x and 8.x tested
+- دسترسی shell به میزبان ESXi با کاربر `root`
+- Python 3.5+ برای همهٔ ابزارها به‌جز `babuk_mft.py` که به Python 3.6+ نیاز دارد
+- فقط کتابخانهٔ استاندارد Python؛ نیازی به نصب وابستگی نیست
+- آزمایش‌شده روی ESXi 6.x، 7.x و 8.x
 
-Step 0 of the wizard reports the ESXi build, every Python interpreter on the
-host, and whether each required feature is available.
+<div dir="rtl">
 
----
+مرحلهٔ صفر ویزارد نسخهٔ ESXi، مفسرهای Python در دسترس و قابلیت‌های موردنیاز را گزارش می‌کند.
 
-## Order of work · ترتیب کار
+</div>
 
-1. `deep_probe.py` on one disk — understand what you are dealing with
-2. `babuk_recover.py` — the guided repair
-3. `gpt_info.py` / `rebuild_mbr.py` — if the partition table needs attention
-4. `babuk_mft.py` — extract files without mounting, if a VM will not boot
-5. `refs_veeam.py` — only for ReFS / Veeam repositories
+## ترتیب پیشنهادی کار
 
----
+1. اجرای `deep_probe.py` روی یک دیسک برای شناخت وضعیت.
+2. اجرای `babuk_recover.py` برای تعمیر هدایت‌شده.
+3. استفاده از `gpt_info.py` یا `rebuild_mbr.py` در صورت نیاز به بررسی جدول پارتیشن.
+4. استفاده از `babuk_mft.py` برای استخراج فایل بدون mount، اگر VM boot نمی‌شود.
+5. استفاده از `refs_veeam.py` فقط برای مخازن ReFS / Veeam.
 
-## Disclaimer · سلب مسئولیت
+## سلب مسئولیت
 
-Provided as is, with no warranty. **Work on copies or snapshots whenever you
-can.** Verify every dry run before using `--apply`. The authors are not
-responsible for data loss.
+<div dir="rtl">
 
-بدون هیچ ضمانتی ارائه می‌شود. **هر وقت می‌توانی روی کپی یا snapshot کار کن.** هر
-dry run را قبل از `--apply` بررسی کن. مسئولیت از دست رفتن داده بر عهده نویسندگان
-نیست.
+این ابزار بدون هیچ ضمانتی ارائه می‌شود. تا حد امکان روی کپی یا snapshot کار کنید و پیش از `--apply` تمام خروجی‌های dry run را بررسی کنید. نویسنده مسئول از دست رفتن داده‌ها نیست.
 
----
+</div>
 
-## Author · نویسنده
+## نویسنده
 
 **Mbyoosefi**
 
-Built during a live multi-host Babuk recovery. Every lesson in the section
-above came from a real failure caught mid-incident.
+<div dir="rtl">
 
-ساخته‌شده در جریان یک بازیابی واقعی Babuk روی چند هاست. هر درسی که در بخش بالا
-آمده، از یک شکست واقعی در میانه حادثه به دست آمده.
+این ابزار در جریان یک بازیابی واقعی Babuk روی چند میزبان ساخته شد و نکته‌های بالا از تجربه‌های همان رخداد به دست آمده‌اند.
 
-## License
+</div>
 
-MIT — Copyright (c) 2026 Mbyoosefi. See [LICENSE](LICENSE).
+## مجوز
+
+[MIT](LICENSE) — Copyright (c) 2026 Mbyoosefi.
