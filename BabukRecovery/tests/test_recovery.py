@@ -721,7 +721,7 @@ class RecoveryTests(unittest.TestCase):
         plan = self.patch_plan()
         actual_open = open
         def fail(path, mode='r', *args, **kwargs):
-            if path == self.path and mode == 'r+b':
+            if os.path.normcase(os.path.realpath(path)) == os.path.normcase(os.path.realpath(self.path)) and mode == 'r+b':
                 raise OSError('fixture write failure')
             return actual_open(path, mode, *args, **kwargs)
         with mock.patch('builtins.open', side_effect=fail):
@@ -740,7 +740,7 @@ class RecoveryTests(unittest.TestCase):
                  dict(destination=self.path), destination=self.path)
         actual = os.unlink
         def crash(path, *args, **kwargs):
-            if path == original:
+            if os.path.normcase(os.path.realpath(path)) == os.path.normcase(os.path.realpath(original)):
                 raise SimulatedCrash()
             return actual(path, *args, **kwargs)
         with mock.patch.object(os, 'unlink', side_effect=crash):
