@@ -1,5 +1,19 @@
 # Changelog
 
+## v3.0.1
+
+2026-10-03
+
+<div dir="rtl" align="right">
+
+دو آزمون تزریق خطا در ویندوز با یکسان‌سازی مسیرها اصلاح شدند. این اصلاح باعث می‌شود شبیه‌سازی شکست نوشتن و قطع تغییر نام روی محیط آزمون خودکار هم فعال شود. منطق بازیابی و قواعد ایمنی تغییری نکرده‌اند.
+
+شمارهٔ نسخه در برنامه، تنظیمات مرجع و معرفی هماهنگ شد. بستهٔ کامل دانلود و فایل کنترل صحت برای انتشار فراهم شد. انتشار و برچسب پیشین محفوظ می‌مانند.
+
+</div>
+
+Windows fault-injection tests now normalize source paths before comparison. Recovery behavior is unchanged. Runtime/reference version metadata and the README identify 3.0.1. This release adds a complete toolkit archive and SHA-256 checksums without replacing the previous release or tag.
+
 ## v3.0.0
 
 2026-10-03

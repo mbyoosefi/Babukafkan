@@ -20,7 +20,7 @@ from contextlib import contextmanager
 
 import legacy_readonly as legacy
 
-VERSION = '3.0.0'
+VERSION = '3.0.1'
 SECTOR = 512
 DAMAGE = legacy.DAMAGE
 EVIDENCE_CLASSES = ('PRIMARY_SURVIVOR', 'BACKUP_SURVIVOR',

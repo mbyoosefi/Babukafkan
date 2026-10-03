@@ -1,4 +1,4 @@
-Babuk Recovery 3.0.0
+Babuk Recovery 3.0.1
 ====================
 
 This upgrades the production recovery logic in ../tools/babuk_recover.py.

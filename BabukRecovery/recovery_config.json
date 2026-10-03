@@ -1,5 +1,5 @@
 {
-  "tool_version": "3.0.0",
+  "tool_version": "3.0.1",
   "damage_bytes": 545259520,
   "sector_bytes": 512,
   "tail_scan_mib": 2048,

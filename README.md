@@ -2,7 +2,7 @@
 
 ## Babuk ESXi Recovery Toolkit
 
-**v3.0.0**
+**v3.0.1**
 
 <div dir="rtl" align="right">
 
@@ -16,7 +16,7 @@
 
 [تاریخچهٔ تغییرات](CHANGELOG.md)
 
-[شرح این انتشار](releases/v3.0.0.md)
+[شرح این انتشار](releases/v3.0.1.md)
 
 [گزارش آزمون‌ها](BabukRecovery/tests/RESULTS.json)
 
@@ -179,7 +179,7 @@ The observed ransomware variant overwrites 52 × 10 MiB, approximately 520 MiB, 
 
 [Changes](CHANGELOG.md)
 
-[Release notes](releases/v3.0.0.md)
+[Release notes](releases/v3.0.1.md)
 
 ### Validation and scope
 
