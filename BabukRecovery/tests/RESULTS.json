@@ -1,0 +1,11 @@
+{
+  "tests_run": 75,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "elapsed_seconds": 23.437,
+  "success": true,
+  "python": "3.10.0 (tags/v3.10.0:b494f59, Oct  4 2021, 19:00:18) [MSC v.1929 64 bit (AMD64)]",
+  "scope": "synthetic fixtures only; no live ESXi/media validation",
+  "timestamp_utc": "2026-10-03T09:16:31Z"
+}

@@ -1,0 +1,43 @@
+Production reference: ../tools/babuk_recover.py (1442 lines), read in full.
+Disk Doctor inspected read-only: REFS/diskdoctor.py sections Evidence,
+probe_gate, PatchTransaction, atomic JSON, undo/check journals, self-tests.
+No Disk Doctor modifications. No historical production file modifications.
+
+Implementation map, established before edits:
+156 read_at: errors become empty reads; new core uses exact reads, errors block.
+170 busy: opening for read is insufficient proof that a VM is offline.
+182 parse_bpb: geometry discovery retained; signature/extent checks strengthened.
+204 mft_alive: FILE signature only, fixed 1024 size; new verifier checks USA
+fixups, record geometry, header/attribute bounds and multiple real records.
+227 scan_ntfs: first 2GiB plus configurable tail, 8MiB overlapping windows.
+284 read_gpt: no header/array CRC verification; fallback array location guessed.
+319 build_primary_gpt: surviving geometry/array retained; only validated backups.
+374 build_mbr: clamps extents, invents disk signature; planner prohibits clamping
+and preserves original signature bytes; unknown active flags remain zero.
+403 manifest_write: append after mutation, no fsync, exceptions swallowed.
+434 save_and_write: reusable backup wb, r+b metadata writes, no fsync/readback.
+458/490 discovery: datastore alias deduplication, VM folder grouping, renamed
+flat/sesparse recognition preserved; discovery expanded for delta layouts.
+529 analyse: 520MiB damage constant, sector aligned tail, NTFS implied backup
+starts and real MFT observation retained; smallest candidate selection replaced
+by independent bounds/table/primary evidence, otherwise ambiguity blocks.
+Small-file TOTAL LOSS and no-hit non-Windows guesses were unjustified; UNKNOWN.
+730 write_descriptor: overwrites descriptor, treats sesparse as VMFS flat.
+746 repair: trailer backup wb, truncate r+b, rename backing/manifest,
+boot/GPT/MBR writes, largest-partition active flag (822-825), removes encrypted
+descriptor (840), descriptor w. These mutators are NEVER called by upgrade.
+848 verify: syntax and FILE signatures only; no byte comparison/CRCs.
+888 rollback: discovers filenames; backup length/hash/current state unchecked,
+r+b writes, no readback. Replaced by transaction records, no guessed filenames.
+1216 main: log append, interactive authorization, EOF-safe ask retained;
+unconditional main() prevents safe import. A read-only compatibility module
+contains verbatim selected constants/functions without legacy mutators/main.
+
+Layer map:
+legacy_readonly.py: preserved discovery/BPB/builders, no source writes.
+recovery_core.py: DiskState/Evidence/Candidate/Diagnosis/RepairPlan/WriteGate,
+sample/full fingerprints, checkpoints, independent record/GPT/MBR validators,
+exclusive source lock, immutable per-event journal, verified artifacts,
+transaction operations and transaction-based rollback.
+babuk_recovery.py: preflight, batch/interactive authorization, persisted reports.
+Tests: synthetic files only. No ESXi/production disk testing claimed.

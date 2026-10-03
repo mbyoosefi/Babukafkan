@@ -1,0 +1,11 @@
+{
+  "tool_version": "3.0.0",
+  "damage_bytes": 545259520,
+  "sector_bytes": 512,
+  "tail_scan_mib": 2048,
+  "minimum_valid_mft_records": 4,
+  "supported_layouts": ["base-flat VMFS extent, 512-byte disk sectors"],
+  "write_authorization_required": true,
+  "inferred_writes_allowed": false,
+  "note": "Reference defaults; CLI options are authoritative. No configuration can bypass safety gates."
+}

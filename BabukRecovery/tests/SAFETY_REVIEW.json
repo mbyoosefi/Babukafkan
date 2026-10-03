@@ -1,0 +1,27 @@
+{
+  "reference_sha256": "cd51c0c43761769c76bb6f28c804b940e3d31d8e488257141558d3db18e5f927",
+  "diskdoctor_read_only_reference_sha256": "773e3df66ec0e53719571d04abcf5b741e9cce9efa6ba042b9fa8c2543b9d8d6",
+  "original_tool_changed": false,
+  "diskdoctor_changed": false,
+  "python35_syntax_checked": [
+    "babuk_recovery.py",
+    "recovery_core.py",
+    "legacy_readonly.py"
+  ],
+  "source_mutation_sites": {
+    "Transaction.run": [
+      "PATCH:r+b write",
+      "TRUNCATE:r+b truncate",
+      "RENAME:exclusive link then unlink",
+      "CREATE:exclusive artifact creation"
+    ],
+    "_rollback_transaction": [
+      "restore:r+b write",
+      "rename:exclusive link then unlink",
+      "creation rollback:verified unlink"
+    ]
+  },
+  "other_write_sites": "exclusive evidence creation; atomic checkpoint/current-state replacement; lock owner lifecycle",
+  "deployment_validation": "NOT_TESTED_ON_ESXI",
+  "application_backup_immutability": "exclusive creation; hash/readback verification; no reuse; not hardware WORM"
+}

@@ -1,272 +1,198 @@
-# Babuk ESXi Recovery Toolkit
+# Babukafkan
 
-<div dir="rtl">
+## Babuk ESXi Recovery Toolkit
 
-ابزارهای بازیابی دیسک‌های مجازی VMware که با باج‌افزار **Babuk / Babyk** روی ESXi آسیب دیده‌اند؛ بدون پرداخت باج و بدون کلید مهاجم.
+**v3.0.0**
+
+<div dir="rtl" align="right">
+
+**بازیابی ساختار دیسک‌های مجازی آسیب‌دیده، بر پایهٔ شواهد و با امکان بازگشت دقیق.**
+
+این پروژه از تجربهٔ بازیابی واقعی پس از حملهٔ باج‌افزار بابوک ساخته شده است. نسخهٔ جدید، منطق بازیابی قبلی را حفظ می‌کند و ثبت پایدار تراکنش، پشتیبان اختصاصی، بازخوانی دقیق، اعتبارسنجی مستقل و گزارش قابل بررسی به آن اضافه می‌کند.
+
+اصل ابزار ساده است: **بدون شواهد کافی و یکتا، هیچ تغییری روی منبع اعمال نمی‌شود.**
+
+[راهنمای کامل فارسی](DOCS.md)
+
+[تاریخچهٔ تغییرات](CHANGELOG.md)
+
+[شرح این انتشار](releases/v3.0.0.md)
+
+[گزارش آزمون‌ها](BabukRecovery/tests/RESULTS.json)
+
+### چه چیزی بازیابی می‌شود؟
+
+در نمونهٔ شناخته‌شدهٔ این رخداد، باج‌افزار ۵۲ بلوک ده‌مگابایتی از ابتدای فایل هدف را بازنویسی می‌کند و دنباله‌ای ۳۲ بایتی می‌افزاید. مرز شناخته‌شدهٔ تخریب ۵۲۰ مگابایت دودویی است. تکرار حمله می‌تواند چند دنباله ایجاد کند.
+
+باقی‌ماندن بایت‌های داده به معنی قابل استفاده بودن دیسک نیست. جدول پارتیشن، ساختار آغازین فایل‌سیستم یا توصیفگر دیسک ممکن است آسیب دیده باشد. ابزار، ساختارهای قابل اثبات را از نسخه‌های سالم باقی‌مانده بازسازی می‌کند؛ بایت‌هایی را که واقعاً از بین رفته‌اند رمزگشایی یا بازتولید نمی‌کند.
+
+### امکانات نسخهٔ جدید
+
+- شناسایی مخازن و دیسک‌ها و گزارش ارتباط آن‌ها با ماشین‌های مجازی.
+- کشف فایل‌سیستم از بخش‌های آغازین و انتهایی منبع، با نگهداری نامزدهای ردشده و محدودهٔ واقعی جست‌وجو.
+- بررسی چند رکورد واقعی جدول فایل‌ها، اصلاحات سکتوری و سازگاری نسخهٔ آینه در صورت قابل استفاده بودن.
+- بازسازی جدول پارتیشن از نسخهٔ پشتیبان معتبر، همراه با بررسی صحت، حدود و هم‌پوشانی.
+- بازسازی هندسهٔ پارتیشن‌های قابل اثبات، بدون اختراع وضعیت فعال بر اساس اندازه.
+- تراکنش اختصاصی برای تغییر بایت‌ها، کوتاه‌سازی دنباله، تغییر نام و ساخت توصیفگر.
+- ثبت و همگام‌سازی سابقه پیش از تغییر منبع، پشتیبان اختصاصی و بازخوانی دقیق پس از نوشتن.
+- اثرانگشت منبع، ادامهٔ اسکن متوقف‌شده، بازگشت مبتنی بر شناسهٔ تراکنش و گزارش انسانی و ماشینی.
+- توقف روی شواهد متناقض، منبع در حال استفاده یا چیدمان ناشناختهٔ دیسک.
+
+### شروع سریع
+
+پوشهٔ نسخهٔ جدید را کامل منتقل کنید؛ اجرای یک فایلِ جداشده از پوشه کافی نیست. محل وضعیت و تراکنش‌ها باید روی فضای پایدار و خارج از منابع تحت بازیابی باشد. در نمونهٔ زیر، نام مخزن بازیابی را با مخزن موجود و مناسب خود جایگزین کنید.
 
 </div>
 
-> [!WARNING]
-> This toolkit is intended for incident recovery. Work on a copy or snapshot whenever possible, and review every proposed change before approving it.
+```bash
+scp -r BabukRecovery root@<esxi-host>:/tmp/
+ssh root@<esxi-host>
+python3 /tmp/BabukRecovery/babuk_recovery.py --self-test
+python3 /tmp/BabukRecovery/babuk_recovery.py --dry-run \
+  --source /vmfs/volumes/DS/VM/VM-flat.vmdk.babyk \
+  --adapter lsilogic \
+  --work-dir /vmfs/volumes/RECOVERY/BabukRecovery
+```
+
+<div dir="rtl" align="right">
+
+ابتدا گزارش و بایت‌های پیشنهادی را بررسی کنید. نوع کنترلر در نمونه صرفاً یک مثال است و باید مطابق ماشین واقعی انتخاب شود. پیش‌نمایش، گزارش و نقطهٔ ادامه ایجاد می‌کند، اما بایت‌ها، اندازه، نام و توصیفگر منبع را تغییر نمی‌دهد.
+
+برای تعمیرِ تأییدشده، مجوز نوشتن باید صریح باشد:
+
+</div>
+
+```bash
+python3 /tmp/BabukRecovery/babuk_recovery.py --repair --authorize-repair \
+  --source /vmfs/volumes/DS/VM/VM-flat.vmdk.babyk \
+  --adapter lsilogic \
+  --work-dir /vmfs/volumes/RECOVERY/BabukRecovery
+```
+
+<div dir="rtl" align="right">
+
+اجرای بدون انتخاب حالت، تأیید تعاملی برای هر دیسک دارد. نبود ورودی یا پایان ورودی به معنی رضایت نیست. پیام‌های محیط خط فرمان نسخهٔ فعلی انگلیسی هستند؛ فارسی بودن مستندات به معنی وجود رابط فارسی یا گزینهٔ تغییر زبان نیست.
+
+### ابزارهای مجموعه
+
+[بازیابی تراکنشی و راهنمای فرمان‌ها](DOCS.md#ابزار-اصلی-نسخه-جدید)
+
+ورودی اصلی نسخهٔ جدید:
+
+</div>
+
+```text
+BabukRecovery/babuk_recovery.py
+```
+
+<div dir="rtl" align="right">
+
+[پروفایل جرم‌یابی فقط‌خواندنی](DOCS.md#پروفایل-جرمیابی)
+
+</div>
+
+```text
+tools/deep_probe.py
+```
+
+<div dir="rtl" align="right">
+
+[بازرسی جدول پارتیشن پشتیبان](DOCS.md#بازرسی-جدول-پارتیشن-پشتیبان)
+
+</div>
+
+```text
+tools/gpt_info.py
+```
+
+<div dir="rtl" align="right">
+
+[فهرست و استخراج فایل بدون اتصال فایل‌سیستم](DOCS.md#فهرست-و-استخراج-فایل)
+
+</div>
+
+```text
+tools/babuk_mft.py
+```
+
+<div dir="rtl" align="right">
+
+[بررسی مخازن پشتیبان و ساختارهای فایل‌سیستم](DOCS.md#بررسی-مخازن-پشتیبان)
+
+</div>
+
+```text
+tools/refs_veeam.py
+```
+
+<div dir="rtl" align="right">
+
+[ابزارهای تاریخی و محدودیت ایمنی آن‌ها](DOCS.md#ابزارهای-تاریخی)
+
+</div>
+
+```text
+tools/babuk_recover.py
+tools/rebuild_mbr.py
+```
+
+<div dir="rtl" align="right">
+
+ابزارهای قدیمی به‌عنوان مرجع و ابزار مکمل نگهداری شده‌اند. مسیرهای نوشتن آن‌ها خودبه‌خود زیر پوشش موتور تراکنش جدید قرار نگرفته‌اند. برای تعمیر ساختاریِ پشتیبانی‌شده، از ورودی نسخهٔ جدید استفاده کنید.
+
+### سازگاری و وضعیت اعتبارسنجی
+
+اجرای عملیاتی برای میزبان مجازی‌سازی طراحی شده است و به مفسر پایتون نسخهٔ ۳٫۵ یا جدیدتر و کتابخانهٔ استاندارد نیاز دارد. مجموعهٔ آزمون‌های نسخهٔ جدید به نسخهٔ ۳٫۸ یا جدیدتر نیاز دارد. ابزار استخراج فایل به نسخهٔ ۳٫۶ یا جدیدتر نیاز دارد.
+
+در این انتشار، ۷۵ آزمون مصنوعی موفق بوده‌اند؛ سازگاری نحوی کد اصلی با نسخهٔ ۳٫۵ بررسی شده است. اجرای عملیاتی نسخهٔ جدید روی میزبان واقعی در این دور اعتبارسنجی نشده است. موفقیت این آزمون‌ها، تضمین بازیابی تمام فایل‌ها یا راه‌اندازی سیستم‌عامل مهمان نیست.
+
+دیسک‌های پایهٔ تخت با سکتور ۵۱۲ بایتی در دامنهٔ پشتیبانی هستند. دیسک‌های پراکنده، زنجیره‌های تغییرات، عکس‌های لحظه‌ای و هندسه‌های مبهم مسدود می‌شوند. تغییر نام ایمن به پشتیبانی سامانهٔ فایل میزبان از ایجاد پیوند سخت وابسته است؛ نبود این قابلیت به توقفِ ثبت‌شده منجر می‌شود.
+
+### مسئولیت استفاده
+
+این پروژه مطابق مجوز، بدون ضمانت ارائه می‌شود. عملیات بازیابی را روی نسخهٔ مستقل منبع انجام دهید و ماشین‌های مرتبط را خاموش نگه دارید. پشتیبان محدودهٔ تغییر، جایگزین تصویر کامل دیسک نیست. پس از بازیابی، اتصال فایل‌سیستم و تعمیر سیستم‌عامل می‌تواند تغییرات دیگری ایجاد کند؛ آن مراحل را جداگانه برنامه‌ریزی کنید.
+
+</div>
 
 ---
 
-## چرا این روش کار می‌کند؟
+## English
 
-<div dir="rtl">
+**Evidence-based recovery for Babuk-damaged VMware disks, with journal-first mutations and exact rollback.**
 
-نسخهٔ ESXi باج‌افزار Babuk همهٔ فایل را رمز نمی‌کند. این نمونه ۵۲ بلوک ۱۰ مگابایتی را از ابتدای فایل بازنویسی می‌کند و سپس متوقف می‌شود. در نتیجه دقیقاً **۵۴۵٬۲۵۹٬۵۲۰ بایت (۵۲۰ MiB)** از ابتدای هر فایل هدف از بین می‌رود و یک trailer ۳۲ بایتی نیز به انتهای آن افزوده می‌شود.
+Babukafkan preserves the existing field-tested recovery reference and adds a separate transactional implementation in `BabukRecovery/`. It repairs evidenced disk structures; it does not decrypt or recreate overwritten payload data.
 
-در یک دیسک مجازی ۱ ترابایتی، بیش از ۹۹٫۹۵٪ داده‌ها دست‌نخورده باقی می‌مانند. فایل‌سیستم معمولاً هنوز روی دیسک وجود دارد؛ فقط اطلاعات ابتدای آن، از جمله جدول پارتیشن یا boot sector، آسیب دیده است. این ابزارها با تکیه بر نسخه‌های پشتیبانِ همان ساختارها که در بخش‌های دیگر دیسک باقی مانده‌اند، آن قسمت را بازسازی می‌کنند.
+The observed ransomware variant overwrites 52 × 10 MiB, approximately 520 MiB, and appends a 32-byte trailer per run. The tool distinguishes surviving bytes from usable disk structure and rejects ambiguous reconstructions.
 
-</div>
+### Highlights
 
-## شروع سریع
+- Read-only analysis and exact planning; explicit repair and rollback authorization.
+- Exclusive transaction-specific backups, independent backup hash readback and durable prewrite journals.
+- Exact write readback, bounded NTFS FILE-record checks, MFTMirr consistency where usable, and GPT/MBR structural validation.
+- Source fingerprints, resumable scan checkpoints, immutable journal events, rejected alternatives and JSON/text reports.
+- Base-flat VMDK descriptor handling, read-only VMware-native chain validation where available, and fail-closed unsupported layouts.
+- Original tools retained unchanged; their legacy write paths do not inherit the new transaction engine.
 
-```bash
-scp tools/babuk_recover.py root@<esxi-host>:/tmp/
-ssh root@<esxi-host>
-python3 /tmp/babuk_recover.py
-```
+[Complete English manual](DOCS.en.md)
 
-<div dir="rtl">
+[راهنمای کامل فارسی](DOCS.md)
 
-همین کافی است. ابزار datastoreها و دیسک‌ها را پیدا می‌کند، هر مورد را بررسی و نتیجه را به زبان ساده گزارش می‌دهد. تا زمانی که برای همان ماشین `y` وارد نکنید، هیچ تغییری روی دیسک نوشته نمی‌شود.
+[Changes](CHANGELOG.md)
 
-</div>
+[Release notes](releases/v3.0.0.md)
 
-## ابزار اصلی: `babuk_recover.py`
+### Validation and scope
 
-<div dir="rtl">
+75 synthetic tests pass on Python 3.10. Production modules pass Python 3.5 syntax checks; the new release has not been validated on a live ESXi host in this environment. Self-tests require Python 3.8+. Production writes require ESXi, native lock inspection and advisory locking. Missing independent VMware validation prevents a whole-disk verified verdict.
 
-یک ویزارد تعاملی برای بررسی و تعمیر دیسک‌های آسیب‌دیده. فرایند در هشت مرحله انجام می‌شود و هر نوشتن نیازمند تأیید شماست.
+Sparse/snapshot/delta layouts, non-512-byte NTFS sectors and conflicting geometry are blocked. Safe namespace restoration uses exclusive hardlinks; VMFS hardlink support remains a deployment capability to validate. Transaction backups are application-immutable, not hardware WORM or signed forensic attestations.
 
-</div>
+CLI messages currently use English. See the manuals for all tools, flags, result states, migration, crash handling, extraction limitations and operator workflows.
 
-| مرحله | شرح |
-|---:|---|
-| ۰ | بررسی محیط: نسخهٔ ESXi، مفسرهای Python و قابلیت‌های لازم |
-| ۱ | یافتن datastoreها و دیسک‌ها و گروه‌بندی بر اساس VM |
-| ۲ | تشخیص تلاش‌های تعمیر قبلی و امکان بازگردانی دقیق |
-| ۳ | اسکن عمیق: مرز خرابی، جدول پارتیشن و اعتبارسنجی واقعی `$MFT` |
-| ۴ | نمایش خلاصهٔ وضعیت همهٔ دیسک‌ها |
-| ۵ | انتخاب ماشین‌ها به‌صورت تعاملی با `y` / `n` / `a` / `q` |
-| ۶ | تعمیر trailer، boot sector، جدول پارتیشن و descriptor |
-| ۷ | اعتبارسنجی فوری و نمایش گام‌های بعدی |
+### License and author
 
-### گزینه‌ها
-
-```text
---root PATH     مسیر جست‌وجو                 (پیش‌فرض: /vmfs/volumes)
---log PATH      فایل گزارش                   (پیش‌فرض: /tmp/babuk_recover.log)
---tail MB       پنجرهٔ اسکن انتهای دیسک      (پیش‌فرض: 2048)
---skip-env      رد کردن بررسی محیط
-```
-
-### نتیجه‌های گزارش‌شده
-
-| نتیجه | معنی |
-|---|---|
-| `READY` | دیسک پیش‌تر قابل استفاده است. |
-| `REPAIRABLE` | امکان تعمیر خودکار وجود دارد. |
-| `NEEDS MANUAL WORK` | `$MFT` از بین رفته یا فایل‌سیستم NTFS نیست؛ به ابزار carving نیاز است. |
-| `TOTAL LOSS` | کل فایل در محدودهٔ تخریب‌شدهٔ ۵۲۰ MiB قرار داشته است. |
-| `IN USE` | دیسک به VM روشن متصل است؛ ابتدا VM را خاموش کنید. |
-
-## ابزارهای مکمل
-
-| ابزار | کاربرد |
-|---|---|
-| [`deep_probe.py`](tools/deep_probe.py) | پروفایل forensics فقط‌خواندنی: نقشهٔ entropy، جدول پارتیشن و اعتبارسنجی هر volume NTFS از طریق خواندن `$MFT` |
-| [`rebuild_mbr.py`](tools/rebuild_mbr.py) | بازسازی MBR تخریب‌شده از NTFS boot sectorهای باقی‌مانده |
-| [`gpt_info.py`](tools/gpt_info.py) | خواندن جدول پارتیشن GPT از نسخهٔ پشتیبان در انتهای دیسک |
-| [`babuk_mft.py`](tools/babuk_mft.py) | خواندن مستقیم `$MFT`، فهرست و استخراج فایل‌ها بدون mount کردن دیسک؛ نیازمند Python 3.6+ |
-| [`refs_veeam.py`](tools/refs_veeam.py) | بررسی volumeهای ReFS و مخازن Veeam، یافتن نام فایل‌ها و بازیابی boot record |
-
-## نکته‌های مهم در بازیابی
-
-### مرز تخریب ۵۲۰ MiB است، نه ۵۱۲ MiB
-
-<div dir="rtl">
-
-رمزکننده از حلقهٔ `do/while` با بلوک‌های ۱۰ مگابایتی استفاده می‌کند و ۵۲ بلوک می‌نویسد. فرض کردن ۵۱۲ MiB باعث می‌شود ۸ MiB دادهٔ تخریب‌شده به اشتباه سالم فرض شود.
-
-</div>
-
-### ممکن است دیسک بیش از یک‌بار رمز شده باشد
-
-<div dir="rtl">
-
-هر اجرا trailer ۳۲ بایتی خود را اضافه می‌کند. برای نمونه‌ای که دوبار هدف قرار گرفته، trailer برابر ۶۴ بایت است. حذف ثابت ۳۲ بایت، اندازهٔ دیسک را ناتراز می‌کند؛ ابزار تا نزدیک‌ترین sector کامل trim می‌کند.
-
-</div>
-
-### یک boot sector معتبر به‌تنهایی کافی نیست
-
-<div dir="rtl">
-
-ممکن است boot sector متعلق به پارتیشن Recovery با نسخهٔ پشتیبان boot sector اشتباه گرفته شود. پیش از هر نوشتن، ابزار `$MFT` را واقعاً می‌خواند و رکوردهای `FILE` را بررسی می‌کند؛ اگر دست‌کم ۴ رکورد از ۸ رکورد نخست معتبر نباشد، نوشتن رد می‌شود.
-
-</div>
-
-### boot sector قدیمی و بزرگ‌تر می‌تواند گمراه‌کننده باشد
-
-<div dir="rtl">
-
-دیسک‌هایی که پیش‌تر resize شده‌اند ممکن است نسخهٔ پشتیبان NTFS مربوط به چیدمان قدیمی و بزرگ‌تر داشته باشند. وقتی دو نامزد offset آغاز یکسانی دارند، گزینهٔ کوچک‌تر معتبرتر است؛ در غیر این صورت پارتیشن بعدی ممکن است پنهان شود.
-
-</div>
-
-### تعمیر boot sector به‌تنهایی کافی نیست
-
-<div dir="rtl">
-
-sector صفر دیسک و جدول پارتیشن نیز در ناحیهٔ تخریب‌شده قرار دارند. بدون بازسازی آن، Windows ممکن است کل دیسک را `Unallocated` نشان دهد، حتی اگر داده‌های فایل‌سیستم سالم باشند.
-
-</div>
-
-### پارتیشن‌های EFI / MSR / Recovery معمولاً نسخهٔ پشتیبان NTFS ندارند
-
-<div dir="rtl">
-
-این موضوع طبیعی است و نباید مانع بازیابی دیگر پارتیشن‌های دیسک شود.
-
-</div>
-
-### نبود ورودی به معنی تأیید نیست
-
-<div dir="rtl">
-
-اگر ورودی از فایل pipe شده باشد یا ترمینال قطع شود، EOF همیشه به معنی خروج است؛ هرگز به‌عنوان پاسخ پیش‌فرض برای نوشتن در نظر گرفته نمی‌شود.
-
-</div>
-
-## ملاحظات ایمنی
-
-<div dir="rtl">
-
-- تا زمانی که برای همان ماشین `y` وارد نکنید، هیچ داده‌ای نوشته نمی‌شود.
-- پیش از جایگزینی هر بایت، نسخهٔ اصلی در فایل `.bak` ذخیره می‌شود.
-- فایل `.babuk-manifest` شامل offset، طول و نام backup است تا هر تغییر دقیقاً قابل rollback باشد.
-- دیسک متصل به VM روشن با پیامی واضح رد می‌شود.
-- اجرای دوبارهٔ ابزار ایمن است؛ دیسک تعمیرشده به‌عنوان قابل استفاده گزارش می‌شود.
-- `deep_probe.py`، `gpt_info.py` و `refs_veeam.py` ــ به‌جز حالت `--apply` ــ فقط‌خواندنی هستند.
-
-</div>
-
-## بعد از تعمیر
-
-### ثبت و روشن‌کردن VM در ESXi
-
-```bash
-vim-cmd solo/registervm "/vmfs/volumes/<ds>/<VM>/<VM>.vmx"
-vim-cmd vmsvc/getallvms
-vim-cmd vmsvc/power.on <VMID>
-```
-
-### اگر volume در Windows به‌صورت RAW دیده می‌شود
-
-<div dir="rtl">
-
-این وضعیت پس از تعمیر طبیعی است. در Windows PE اجرا کنید:
-
-</div>
-
-```cmd
-chkdsk C: /f
-```
-
-### اگر ماشین boot نمی‌شود
-
-<div dir="rtl">
-
-ممکن است پارتیشن System Reserved در ناحیهٔ تخریب‌شده بوده باشد. داده‌ها همچنان می‌توانند سالم باشند: دیسک را به‌عنوان دیسک دوم به یک Windows VM سالم متصل و داده‌ها را کپی کنید، یا فایل‌های boot را بازسازی کنید.
-
-</div>
-
-```cmd
-diskpart
-list volume
-select volume <the-large-NTFS-volume>
-assign letter=W
-exit
-bcdboot W:\Windows /s W: /f BIOS
-```
-
-<div dir="rtl">
-
-برای دیسک GPT از `/f UEFI` استفاده کنید. خطای `access denied` برای `bootrec /fixboot` در Windows PE رایج است و اگر `bcdboot` با موفقیت اجرا شده باشد، اهمیت ندارد.
-
-</div>
-
-## ReFS و مخازن Veeam
-
-<div dir="rtl">
-
-مخازن Veeam معمولاً از ReFS استفاده می‌کنند و ویزارد اصلی آن‌ها را تعمیر نمی‌کند. فایل‌های `.vbk` امضای ثابت ندارند، بنابراین carving معمولی معمولاً کمکی نمی‌کند. ابزار `refs_veeam.py` نام فایل‌ها را از صفحات metadata با کدگذاری UTF-16، در بخش‌های دور از ابتدای تخریب‌شدهٔ volume، پیدا می‌کند.
-
-</div>
-
-```bash
-# فهرست نام همهٔ backupهای Veeam روی دیسک
-python3 tools/refs_veeam.py names <disk> --out /tmp/names.txt
-
-# یافتن ساختارهای ReFS مانند boot record و نسخه‌های superblock
-python3 tools/refs_veeam.py refs <disk> --start <near-the-end>
-
-# بررسی یک نتیجه
-python3 tools/refs_veeam.py around <disk> <offset>
-
-# بازگرداندن boot record باقی‌مانده؛ بدون --apply فقط dry run است
-python3 tools/refs_veeam.py restore <disk> <offset> \
-  --to <partition-start> --part-size <from-gpt_info.py> --apply
-```
-
-<div dir="rtl">
-
-بازگرداندن boot record ممکن است باعث شود Windows volume را شناسایی کند؛ اما ReFS به درخت‌های metadata مورد اشارهٔ checkpoint نیز نیاز دارد. اگر آن clusterها در ۵۲۰ MiB ابتدایی آسیب دیده باشند، volume mount نمی‌شود. در این حالت، فهرست نام‌های استخراج‌شده با `names` مشخص می‌کند چه چیزهایی وجود داشته‌اند و ابزار حرفه‌ایِ آگاه از ReFS مانند UFS Explorer گام بعدی است.
-
-</div>
-
-## پیش‌نیازها
-
-- دسترسی shell به میزبان ESXi با کاربر `root`
-- Python 3.5+ برای همهٔ ابزارها به‌جز `babuk_mft.py` که به Python 3.6+ نیاز دارد
-- فقط کتابخانهٔ استاندارد Python؛ نیازی به نصب وابستگی نیست
-- آزمایش‌شده روی ESXi 6.x، 7.x و 8.x
-
-<div dir="rtl">
-
-مرحلهٔ صفر ویزارد نسخهٔ ESXi، مفسرهای Python در دسترس و قابلیت‌های موردنیاز را گزارش می‌کند.
-
-</div>
-
-## ترتیب پیشنهادی کار
-
-1. اجرای `deep_probe.py` روی یک دیسک برای شناخت وضعیت.
-2. اجرای `babuk_recover.py` برای تعمیر هدایت‌شده.
-3. استفاده از `gpt_info.py` یا `rebuild_mbr.py` در صورت نیاز به بررسی جدول پارتیشن.
-4. استفاده از `babuk_mft.py` برای استخراج فایل بدون mount، اگر VM boot نمی‌شود.
-5. استفاده از `refs_veeam.py` فقط برای مخازن ReFS / Veeam.
-
-## سلب مسئولیت
-
-<div dir="rtl">
-
-این ابزار بدون هیچ ضمانتی ارائه می‌شود. تا حد امکان روی کپی یا snapshot کار کنید و پیش از `--apply` تمام خروجی‌های dry run را بررسی کنید. نویسنده مسئول از دست رفتن داده‌ها نیست.
-
-</div>
-
-## نویسنده
+[MIT License](LICENSE)
 
 **Mbyoosefi**
 
-<div dir="rtl">
-
-این ابزار در جریان یک بازیابی واقعی Babuk روی چند میزبان ساخته شد و نکته‌های بالا از تجربه‌های همان رخداد به دست آمده‌اند.
-
-</div>
-
-## مجوز
-
-[MIT](LICENSE) — Copyright (c) 2026 Mbyoosefi.
+This project grew out of real incident recovery. No Disk Doctor code or documentation is changed by this release.
